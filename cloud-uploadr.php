@@ -108,8 +108,11 @@ function cloud_uploadr_options() {
     if( isset($_POST[ $hidden_field_name ]) && $_POST[ $hidden_field_name ] == 'Y' ) {
 
         // Save the posted value in the database
-        foreach($fields as $key => $value)
-            update_option( $key, $_POST[ $key ] );
+        foreach($field_names as $name)
+        {
+            update_option( $name, $_POST[ $name ] );
+            $fields[$name] = $_POST[ $name ];
+        }
 
         // Put an settings updated message on the screen
         ?>
@@ -125,7 +128,7 @@ function cloud_uploadr_options() {
     // settings form
     ?>
 
-    <form name="form1" method="post" action="">
+    <form name="cloud_uploadr_options" method="post" action="">
         <input type="hidden" name="<?php echo $hidden_field_name; ?>" value="Y">
 
         <p><?php _e("Provider:", 'cloud_uploadr_provider' ); ?>
