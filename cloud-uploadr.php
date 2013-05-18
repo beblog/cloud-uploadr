@@ -65,9 +65,14 @@ function get_upload_path($time = null) {
 }
 
 // Admin Menu
-add_action( 'network_admin_menu', 'cloud_uploadr_menu' );
+if ( is_multisite() ) {
+    add_action( 'network_admin_menu', 'cloud_uploadr_menu' );
+} else {
+    add_action( 'admin_menu', 'cloud_uploadr_menu' );
+}
+
 function cloud_uploadr_menu() {
-    add_options_page( 'Cloud Uploadr Options', 'Cloud Uploadr', 'manage_options', 'cloud-uploadr', 'cloud_uploadr_options' );
+    add_submenu_page( 'settings.php', 'Cloud Uploadr Options', 'Cloud Uploadr', 'manage_options', 'cloud-uploadr', 'cloud_uploadr_options' );
 }
 
 function cloud_uploadr_options() {
