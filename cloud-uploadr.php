@@ -122,9 +122,33 @@ function cloud_uploadr_options() {
     <form name="form1" method="post" action="">
         <input type="hidden" name="<?php echo $hidden_field_name; ?>" value="Y">
 
-        <p><?php _e("Favorite Color:", 'menu-test' ); ?>
-            <input type="text" name="<?php echo $data_field_name; ?>" value="<?php echo $opt_val; ?>" size="20">
+        <p><?php _e("Provider:", 'cloud_uploadr_provider' ); ?>
+            <select name="cloud_uploadr_provider">
+                <option <? if($fields['cloud_uploadr_provider'] == 'aws-s3') echo 'selected'; ?> value="aws-s3">AWS S3</option>
+            </select>
         </p><hr />
+
+        <h3>AWS S3 Configuration</h3>
+
+        <p><?php _e("Bucket:", 'cloud_uploadr_s3_bucket' ); ?>
+            <input type="text" name="cloud_uploadr_s3_bucket" value="<?php echo $fields['cloud_uploadr_s3_bucket']; ?>" size="20">
+
+            <?php _e("Access Key:", 'cloud_uploadr_s3_access_key' ); ?>
+            <input type="text" name="cloud_uploadr_s3_access_key" value="<?php echo $fields['cloud_uploadr_s3_access_key']; ?>" size="20">
+
+            <?php _e("Secret:", 'cloud_uploadr_s3_secret' ); ?>
+            <input type="text" name="cloud_uploadr_s3_secret" value="<?php echo $fields['cloud_uploadr_s3_secret']; ?>" size="20">
+
+            <?php _e("Bucket URL:", 'cloud_uploadr_s3_url' ); ?>
+            <input type="text" name="cloud_uploadr_s3_url" value="<?php echo $fields['cloud_uploadr_s3_url']; ?>" size="32">
+
+            <?php _e("Region:", 'cloud_uploadr_s3_region' ); ?>
+            <select name="cloud_uploadr_s3_region">
+                <option <? if($fields['cloud_uploadr_s3_region'] == 'eu-west-1') echo 'selected'; ?> value="eu-west-1">eu-west-1</option>
+                <option <? if($fields['cloud_uploadr_s3_region'] == 'us-west-1') echo 'selected'; ?> value="us-west-1">us-west-1</option>
+            </select>
+        </p><hr />
+
 
         <p class="submit">
             <input type="submit" name="Submit" class="button-primary" value="<?php esc_attr_e('Save Changes') ?>" />
