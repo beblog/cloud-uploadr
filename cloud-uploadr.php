@@ -73,6 +73,12 @@ if ( is_multisite() ) {
 
 function cloud_uploadr_menu() {
     add_submenu_page( 'settings.php', 'Cloud Uploadr Options', 'Cloud Uploadr', 'manage_options', 'cloud-uploadr', 'cloud_uploadr_options' );
+    // Register settings
+    add_action( 'admin_init', 'register_cloud_uploadr' );
+}
+
+function register_cloud_uploadr() {
+
 }
 
 function cloud_uploadr_options() {
@@ -103,18 +109,18 @@ function cloud_uploadr_options() {
 
         // Save the posted value in the database
         foreach($fields as $key => $value)
-            update_option( $key, $value );
+            update_option( $key, $_POST[ $key ] );
 
         // Put an settings updated message on the screen
         ?>
-        <div class="updated"><p><strong><?php _e('settings saved.', 'menu-test' ); ?></strong></p></div>
+        <div class="updated"><p><strong><?php _e('settings saved.', 'cloud_uploadr' ); ?></strong></p></div>
         <?php
 
     }
     // Now display the settings editing screen
     echo '<div class="wrap">';
     // header
-    echo "<h2>" . __( 'Menu Test Plugin Settings', 'menu-test' ) . "</h2>";
+    echo "<h2>" . __( 'Menu Test Plugin Settings', 'cloud_uploadr' ) . "</h2>";
 
     // settings form
     ?>
@@ -124,6 +130,7 @@ function cloud_uploadr_options() {
 
         <p><?php _e("Provider:", 'cloud_uploadr_provider' ); ?>
             <select name="cloud_uploadr_provider">
+                <option></option>
                 <option <? if($fields['cloud_uploadr_provider'] == 'aws-s3') echo 'selected'; ?> value="aws-s3">AWS S3</option>
             </select>
         </p><hr />
@@ -131,19 +138,20 @@ function cloud_uploadr_options() {
         <h3>AWS S3 Configuration</h3>
 
         <p><?php _e("Bucket:", 'cloud_uploadr_s3_bucket' ); ?>
-            <input type="text" name="cloud_uploadr_s3_bucket" value="<?php echo $fields['cloud_uploadr_s3_bucket']; ?>" size="20">
+            <input type="text" name="cloud_uploadr_s3_bucket" value="<?php echo $fields['cloud_uploadr_s3_bucket']; ?>" size="20"><br />
 
             <?php _e("Access Key:", 'cloud_uploadr_s3_access_key' ); ?>
-            <input type="text" name="cloud_uploadr_s3_access_key" value="<?php echo $fields['cloud_uploadr_s3_access_key']; ?>" size="20">
+            <input type="text" name="cloud_uploadr_s3_access_key" value="<?php echo $fields['cloud_uploadr_s3_access_key']; ?>" size="20"><br/>
 
             <?php _e("Secret:", 'cloud_uploadr_s3_secret' ); ?>
-            <input type="text" name="cloud_uploadr_s3_secret" value="<?php echo $fields['cloud_uploadr_s3_secret']; ?>" size="20">
+            <input type="text" name="cloud_uploadr_s3_secret" value="<?php echo $fields['cloud_uploadr_s3_secret']; ?>" size="20"><br />
 
             <?php _e("Bucket URL:", 'cloud_uploadr_s3_url' ); ?>
-            <input type="text" name="cloud_uploadr_s3_url" value="<?php echo $fields['cloud_uploadr_s3_url']; ?>" size="32">
+            <input type="text" name="cloud_uploadr_s3_url" value="<?php echo $fields['cloud_uploadr_s3_url']; ?>" size="32"><br />
 
             <?php _e("Region:", 'cloud_uploadr_s3_region' ); ?>
             <select name="cloud_uploadr_s3_region">
+                <option></option>
                 <option <? if($fields['cloud_uploadr_s3_region'] == 'eu-west-1') echo 'selected'; ?> value="eu-west-1">eu-west-1</option>
                 <option <? if($fields['cloud_uploadr_s3_region'] == 'us-west-1') echo 'selected'; ?> value="us-west-1">us-west-1</option>
             </select>
