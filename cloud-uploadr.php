@@ -18,20 +18,39 @@ License: GPL2
  * - s3URL
  * - s3Region
  */
-$options = get_option('cloud_uploadr_setting');
-
-switch($options['cloud_uploadr_provider']) {
-    case "aws-s3":
-        require('providers/aws-s3.php');
-        $prefix = "s3";
-        break;
-}
 
 if( !function_exists('add_filter') ) {
     function add_filter() {}
 }
 
-function get_upload_path($time = null) {
+if( !array_key_exists('WP_UPLOAD_BASEDIR', $GLOBALS) ) {
+    // Get system temp directory
+    $ini_val = ini_get('upload_tmp_dir');
+    $tempdir = $ini_val ? $ini_val : sys_get_temp_dir();
+    if (substr($tempdir, -1) != '/') $tempdir .= '/';
+
+    error_log("basedir not set");
+    $basedir = $tempdir . 'cloud_uploadr'. time() . rand(0, 999999);
+    while (is_dir($basedir))
+        $basedir = $tempdir . 'cloud_uploadr' . time() . rand(0, 999999);
+
+    define('WP_UPLOAD_BASEDIR', $basedir);
+}
+
+
+
+// TODO site options for single WP install
+
+switch(get_site_option('cloud_uploadr_provider')) {
+    case "aws-s3":
+        require('providers/aws-s3.php');
+        define("CLOUD_UPLOADR_PREFIX", 's3');
+        break;
+}
+
+
+
+function get_upload_path($withSubdir = true, $time = null) {
     $upload_path = trim( get_option( 'upload_path' ) );
 
     if ( empty( $upload_path ) || 'wp-content/uploads' == $upload_path ) {
@@ -50,7 +69,7 @@ function get_upload_path($time = null) {
     }
 
     $subdir = '';
-    if ( get_option( 'uploads_use_yearmonth_folders' ) ) {
+    if ( get_option( 'uploads_use_yearmonth_folders' ) &&  $withSubdir == true) {
         // Generate the yearly and monthly dirs
         if ( !$time )
             $time = current_time( 'mysql' );
@@ -91,14 +110,14 @@ function cloud_uploadr_options() {
         'cloud_uploadr_s3_bucket',
         'cloud_uploadr_s3_access_key',
         'cloud_uploadr_s3_secret',
-        'cloud_uploadr_s3_url',
-        'cloud_uploadr_s3_region'
+        'cloud_uploadr_s3_region',
+        'cloud_uploadr_s3_virtualhost'
     );
 
     // Read in existing option value from database
     $fields = array();
     foreach($field_names as $name)
-        $fields[$name] = get_option( $name );
+        $fields[$name] = get_site_option( $name );
 
     $hidden_field_name = 'cloud_uploadr_submit_hidden';
 
@@ -110,7 +129,7 @@ function cloud_uploadr_options() {
         // Save the posted value in the database
         foreach($field_names as $name)
         {
-            update_option( $name, $_POST[ $name ] );
+            update_site_option( $name, $_POST[ $name ] );
             $fields[$name] = $_POST[ $name ];
         }
 
@@ -143,14 +162,15 @@ function cloud_uploadr_options() {
         <p><?php _e("Bucket:", 'cloud_uploadr_s3_bucket' ); ?>
             <input type="text" name="cloud_uploadr_s3_bucket" value="<?php echo $fields['cloud_uploadr_s3_bucket']; ?>" size="20"><br />
 
+            <?php _e("Virtual Host:", 'cloud_uploadr_s3_virtualhost' ); ?>
+            <input type="hidden" name="cloud_uploadr_s3_virtualhost" value="0" />
+            <input <?php if($fields['cloud_uploadr_s3_virtualhost']) echo "checked"; ?> type="checkbox" name="cloud_uploadr_s3_virtualhost" value="1"><br />
+
             <?php _e("Access Key:", 'cloud_uploadr_s3_access_key' ); ?>
             <input type="text" name="cloud_uploadr_s3_access_key" value="<?php echo $fields['cloud_uploadr_s3_access_key']; ?>" size="20"><br/>
 
             <?php _e("Secret:", 'cloud_uploadr_s3_secret' ); ?>
             <input type="text" name="cloud_uploadr_s3_secret" value="<?php echo $fields['cloud_uploadr_s3_secret']; ?>" size="20"><br />
-
-            <?php _e("Bucket URL:", 'cloud_uploadr_s3_url' ); ?>
-            <input type="text" name="cloud_uploadr_s3_url" value="<?php echo $fields['cloud_uploadr_s3_url']; ?>" size="32"><br />
 
             <?php _e("Region:", 'cloud_uploadr_s3_region' ); ?>
             <select name="cloud_uploadr_s3_region">
@@ -172,18 +192,82 @@ function cloud_uploadr_options() {
 }
 
 // Will be handled at the provider level
-add_filter( 'wp_handle_upload', $prefix.'_handle_file_upload' );
+add_filter( 'wp_handle_upload', CLOUD_UPLOADR_PREFIX.'_handle_file_upload' );
 
 
 add_filter('wp_generate_attachment_metadata','cloud_uploadr_generate_attachment_metadata');
 add_filter('wp_update_attachment_metadata','cloud_uploadr_generate_attachment_metadata');
-function cloud_uploadr_generate_attachment_metadata($metadata) {
+function cloud_uploadr_generate_attachment_metadata($data) {
+    error_log("cloud_uploadr_generate_attachment_metadata fired");
+    error_log("metadata" . print_r($data, true));
+
+    $upload_dir = wp_upload_dir();
+    $filepath = $upload_dir['basedir'] . '/' . preg_replace('/^(.+)\/[^\/]+$/', '\\1', $data['file']);
+
+    foreach ($data['sizes'] as $size => $sizedata) {
+        $file['file'] = $filepath . '/' . $sizedata['file'];
+        $file['url'] = $upload_dir['baseurl'] . substr($file['file'], strlen($upload_dir['basedir']));
+
+        $file['type'] = 'application/octet-stream';
+        switch(substr($file['file'], -4)) {
+            case '.gif':
+                $file['type'] = 'image/gif';
+                break;
+            case '.jpg':
+                $file['type'] = 'image/jpeg';
+                break;
+            case '.png':
+                $file['type'] = 'image/png';
+                break;
+        }
+
+        s3_handle_file_upload($file);
+    }
+
+    return $data;
+
 
 }
 
-add_filter('wp_get_attachment_url', 'cloud_uploadr_get_attachment_url');
+//add_filter('wp_get_attachment_url', 'cloud_uploadr_get_attachment_url');
 function cloud_uploadr_get_attachment_url($url) {
+    error_log("cloud_uploadr_get_attachment_url fired");
+    $upload_dir = get_upload_path();
+
+
+
     $http = site_url(FALSE, 'http');
     $https = site_url(FALSE, 'https');
     return ( $_SERVER['HTTPS'] == 'on' ) ? str_replace($http, $https, $url) : $url;
+}
+
+add_filter('upload_dir', 'cloud_uploadr_upload_dir');
+function cloud_uploadr_upload_dir($data) {
+    error_log("cloud_uploadr_upload_dir fired");
+
+    $data['basedir'] = WP_UPLOAD_BASEDIR;
+    $data['baseurl'] = S3_URL . "/" . get_upload_path(false);
+    $data['url'] = S3_URL . "/" . get_upload_path();
+    $data['path'] = WP_UPLOAD_BASEDIR . $data['subdir'];
+
+    error_log("data " . print_r($data, true));
+
+    return $data;
+
+    /*
+    [19-May-2013 08:20:27] upload_dir
+    Array (
+        [path] => /var/www/vhosts/beblog.fr/httpdocs/wp-content/uploads/sites/2/2013/05
+        [url] => http://remi.beblog.fr/wp-content/uploads/sites/2/2013/05
+        [subdir] => /2013/05
+        [basedir] => /var/www/vhosts/beblog.fr/httpdocs/wp-content/uploads/sites/2
+        [baseurl] => http://remi.beblog.fr/wp-content/uploads/sites/2
+        [error] =>
+    )
+    */
+}
+
+//add_filter('shutdown', 'cloud_uploadr_shutdown');
+function cloud_uploadr_shutdown() {
+
 }
